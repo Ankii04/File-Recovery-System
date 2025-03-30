@@ -165,6 +165,6 @@ This project is open-source and available under the **MIT License**.
 ## Contact
 For any queries or suggestions, feel free to reach out!
 
-📧 **Email:** your-email@example.com  
+📧 **Email:** ankit1841@gmail.com  
 🔗 **GitHub:** [Ankii04](https://github.com/Ankii04)
 
