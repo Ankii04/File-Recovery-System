@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distributed File System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script defer src="{{ url_for('static', filename='js/script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>File Recovery System</h1>
+        <p>Manage files efficiently across multiple nodes.</p>
+
+        <!-- Action Selector -->
+        <div class="action-selector">
+            <label for="fileAction">Choose Action:</label>
+            <select id="fileAction" onchange="toggleFileAction()">
+                <option value="upload">Upload File</option>
+                <option value="create">Create File</option>
+            </select>
+        </div>
+
+        <!-- Upload File Section -->
+        <div id="uploadSection" class="file-actions">
+            <label for="fileInput" class="file-label">Choose File</label>
+            <input type="file" id="fileInput" class="file-input" onchange="updateFileName()">
+            <span id="selectedFileName">No file chosen</span>
+            <button onclick="uploadFile()">Upload File</button>
+        </div>
+
+        <!-- Create File Section -->
+        <div id="createSection" class="create-file hidden">
+            <h2>Create New File</h2>
+            <div class="input-group">
+                <input type="text" id="fileNameInput" placeholder="Enter filename (e.g., myfile.txt)">
+            </div>
+            <div class="input-group">
+                <textarea id="fileContentInput" placeholder="Enter file content..."></textarea>
+            </div>
+            <button onclick="createFile()">Create File</button>
+        </div>
+
+        <!-- Search and Sorting Section -->
+        <div class="search-filter">
+            <input type="text" id="searchInput" placeholder="Search by name...">
+            <button onclick="searchFiles()">Search</button>
+            <select id="sortOptions" onchange="viewFiles()">
+                <option value="name">Sort by Name</option>
+                <option value="size">Sort by Size</option>
+                <option value="date_modified">Sort by Date</option>
+            </select>
+            <button id="refreshButton" onclick="viewFiles()">Refresh List</button>
+            <button id="recycleBinButton" onclick="viewTrash()">Recycle Bin</button>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner hidden" id="loadingSpinner"></div>
+
+        <!-- File List Section -->
+        <div id="fileList">
+            <h3>Uploaded Files</h3>
+            <ul id="filesContainer"></ul>
+        </div>
+
+        <!-- Trash Section -->
+        <div id="trashList" class="hidden">
+            <h3>Trash</h3>
+            <ul></ul>
+        </div>
+    </div>
+</body>
+</html>
