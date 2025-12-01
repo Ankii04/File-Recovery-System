@@ -4,20 +4,68 @@ import shutil
 from datetime import datetime
 import logging
 from flask_cors import CORS
+import firebase_admin
+from firebase_admin import credentials, storage
+from io import BytesIO
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
 
-UPLOAD_FOLDER = "uploads"
-TRASH_FOLDER = "trash"
+logging.basicConfig(level=logging.DEBUG)
+
+USE_FIREBASE = False
+try:
+    # Check environment variable first (Vercel deployment)
+    if os.environ.get('FIREBASE_CREDENTIALS'):
+        import json
+        cred_json = json.loads(os.environ['FIREBASE_CREDENTIALS'])
+        cred = credentials.Certificate(cred_json)
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': 'file-recovery-system-5d7e9.appspot.com'
+        })
+        USE_FIREBASE = True
+        logging.info("Firebase initialized successfully from environment variable")
+    
+    # Fall back to local file (local development)
+    elif os.path.exists('serviceAccountKey.json'):
+        cred = credentials.Certificate('serviceAccountKey.json')
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': 'file-recovery-system-5d7e9.appspot.com'
+        })
+        USE_FIREBASE = True
+        logging.info("Firebase initialized successfully from local file")
+
+    else:
+        logging.warning("Firebase credentials not found, using local storage")
+
+except Exception as e:
+    logging.warning(f"Firebase initialization failed: {e}, using local storage")
+
+if os.environ.get('VERCEL'):
+    UPLOAD_FOLDER = "/tmp/uploads"
+    TRASH_FOLDER = "/tmp/trash"
+else:
+    UPLOAD_FOLDER = "uploads"
+    TRASH_FOLDER = "trash"
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["TRASH_FOLDER"] = TRASH_FOLDER
 
-logging.basicConfig(level=logging.DEBUG)
+# Only create directories if not using Firebase
+if not USE_FIREBASE:
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        os.makedirs(TRASH_FOLDER, exist_ok=True)
+        logging.info(f"Created local storage directories: {UPLOAD_FOLDER}, {TRASH_FOLDER}")
+    except OSError as e:
+        # On Vercel without Firebase, this will fail - that's expected
+        if os.environ.get('VERCEL'):
+            logging.error(f"CRITICAL: Running on Vercel without Firebase credentials! Local storage will not work. Error: {e}")
+            logging.error("Please add FIREBASE_CREDENTIALS environment variable in Vercel dashboard.")
+        else:
+            logging.error(f"Could not create local directories: {e}")
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(TRASH_FOLDER, exist_ok=True)
+
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -28,11 +76,17 @@ def upload_file():
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
     
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
-    
     try:
-        file.save(filepath)
-        logging.info(f"File {file.filename} uploaded successfully.")
+        if USE_FIREBASE:
+            bucket = storage.bucket()
+            blob = bucket.blob(f"uploads/{file.filename}")
+            file.stream.seek(0)
+            blob.upload_from_string(file.read(), content_type=file.content_type)
+            logging.info(f"File {file.filename} uploaded to Firebase successfully.")
+        else:
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+            file.save(filepath)
+            logging.info(f"File {file.filename} uploaded locally successfully.")
     except Exception as e:
         logging.error(f"Error saving file: {e}")
         return jsonify({"error": "Failed to upload file"}), 500
@@ -45,15 +99,28 @@ def list_files():
     sort_by = request.args.get('sort_by', 'name')
 
     try:
-        files = [
-            {
-                "name": filename,
-                "size": os.path.getsize(os.path.join(UPLOAD_FOLDER, filename)),
-                "type": filename.split('.')[-1] if '.' in filename else "Unknown",
-                "date_modified": datetime.fromtimestamp(os.path.getmtime(os.path.join(UPLOAD_FOLDER, filename))).strftime('%Y-%m-%d %H:%M:%S')
-            }
-            for filename in os.listdir(UPLOAD_FOLDER) if os.path.isfile(os.path.join(UPLOAD_FOLDER, filename))
-        ]
+        if USE_FIREBASE:
+            bucket = storage.bucket()
+            blobs = bucket.list_blobs(prefix='uploads/')
+            files = [
+                {
+                    "name": blob.name.replace('uploads/', ''),
+                    "size": blob.size,
+                    "type": blob.name.split('.')[-1] if '.' in blob.name else "Unknown",
+                    "date_modified": blob.updated.strftime('%Y-%m-%d %H:%M:%S') if blob.updated else "Unknown"
+                }
+                for blob in blobs if blob.name != 'uploads/'
+            ]
+        else:
+            files = [
+                {
+                    "name": filename,
+                    "size": os.path.getsize(os.path.join(UPLOAD_FOLDER, filename)),
+                    "type": filename.split('.')[-1] if '.' in filename else "Unknown",
+                    "date_modified": datetime.fromtimestamp(os.path.getmtime(os.path.join(UPLOAD_FOLDER, filename))).strftime('%Y-%m-%d %H:%M:%S')
+                }
+                for filename in os.listdir(UPLOAD_FOLDER) if os.path.isfile(os.path.join(UPLOAD_FOLDER, filename))
+            ]
     except Exception as e:
         logging.error(f"Error listing files: {e}")
         return jsonify({"error": "Failed to list files"}), 500
@@ -75,18 +142,29 @@ def list_files():
 
 @app.route('/delete/<filename>', methods=['DELETE'])
 def delete_file(filename):
-    src_path = os.path.join(UPLOAD_FOLDER, filename)
-    dest_path = os.path.join(TRASH_FOLDER, filename)
-
-    if os.path.exists(src_path):
-        try:
-            shutil.move(src_path, dest_path)
-            logging.info(f"File {filename} moved to trash.")
-        except Exception as e:
-            logging.error(f"Error moving file to trash: {e}")
-            return jsonify({"error": "Failed to move file to trash"}), 500
-        return jsonify({"message": f"{filename} moved to trash.", "status": "deleted"}), 200
-    return jsonify({"error": "File not found"}), 404
+    try:
+        if USE_FIREBASE:
+            bucket = storage.bucket()
+            src_blob = bucket.blob(f"uploads/{filename}")
+            if src_blob.exists():
+                dest_blob = bucket.blob(f"trash/{filename}")
+                bucket.copy_blob(src_blob, bucket, f"trash/{filename}")
+                src_blob.delete()
+                logging.info(f"File {filename} moved to trash.")
+                return jsonify({"message": f"{filename} moved to trash.", "status": "deleted"}), 200
+            else:
+                return jsonify({"error": "File not found"}), 404
+        else:
+            src_path = os.path.join(UPLOAD_FOLDER, filename)
+            dest_path = os.path.join(TRASH_FOLDER, filename)
+            if os.path.exists(src_path):
+                shutil.move(src_path, dest_path)
+                logging.info(f"File {filename} moved to trash.")
+                return jsonify({"message": f"{filename} moved to trash.", "status": "deleted"}), 200
+            return jsonify({"error": "File not found"}), 404
+    except Exception as e:
+        logging.error(f"Error moving file to trash: {e}")
+        return jsonify({"error": "Failed to move file to trash"}), 500
 
 @app.route('/restore/<filename>', methods=['PUT'])
 def restore_file(filename):
@@ -142,18 +220,32 @@ def rename_file():
     if not old_name or not new_name:
         return jsonify({"error": "Both old and new file names are required"}), 400
 
-    old_path = os.path.join(UPLOAD_FOLDER, old_name)
-    new_path = os.path.join(UPLOAD_FOLDER, new_name)
-
-    if not os.path.exists(old_path):
-        return jsonify({"error": "File not found"}), 404
-
-    if os.path.exists(new_path):
-        return jsonify({"error": "A file with the new name already exists"}), 409
-
     try:
-        os.rename(old_path, new_path)
-        logging.info(f"File renamed from {old_name} to {new_name}.")
+        if USE_FIREBASE:
+            bucket = storage.bucket()
+            old_blob = bucket.blob(f"uploads/{old_name}")
+            if not old_blob.exists():
+                return jsonify({"error": "File not found"}), 404
+            
+            new_blob = bucket.blob(f"uploads/{new_name}")
+            if new_blob.exists():
+                return jsonify({"error": "A file with the new name already exists"}), 409
+            
+            bucket.copy_blob(old_blob, bucket, f"uploads/{new_name}")
+            old_blob.delete()
+            logging.info(f"File renamed from {old_name} to {new_name}.")
+        else:
+            old_path = os.path.join(UPLOAD_FOLDER, old_name)
+            new_path = os.path.join(UPLOAD_FOLDER, new_name)
+            
+            if not os.path.exists(old_path):
+                return jsonify({"error": "File not found"}), 404
+            
+            if os.path.exists(new_path):
+                return jsonify({"error": "A file with the new name already exists"}), 409
+            
+            os.rename(old_path, new_path)
+            logging.info(f"File renamed from {old_name} to {new_name}.")
     except Exception as e:
         logging.error(f"Error renaming file: {e}")
         return jsonify({"error": "Failed to rename file"}), 500
@@ -162,18 +254,31 @@ def rename_file():
 
 @app.route('/download/<filename>', methods=['GET'])
 def download_file(filename):
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-    if os.path.exists(filepath):
-        try:
-            return send_file(filepath, as_attachment=True)
-        except Exception as e:
-            logging.error(f"Error sending file: {e}")
-            return jsonify({"error": "Failed to download file"}), 500
-    return jsonify({"error": "File not found"}), 404
+    try:
+        if USE_FIREBASE:
+            bucket = storage.bucket()
+            blob = bucket.blob(f"uploads/{filename}")
+            if blob.exists():
+                file_data = blob.download_as_bytes()
+                return send_file(
+                    BytesIO(file_data),
+                    as_attachment=True,
+                    download_name=filename
+                )
+            else:
+                return jsonify({"error": "File not found"}), 404
+        else:
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            if os.path.exists(filepath):
+                return send_file(filepath, as_attachment=True)
+            return jsonify({"error": "File not found"}), 404
+    except Exception as e:
+        logging.error(f"Error downloading file: {e}")
+        return jsonify({"error": "Failed to download file"}), 500
 
 @app.route('/create-file', methods=['POST'])
 def create_file():
-    data = request.get_json()  # Get JSON data from the request
+    data = request.get_json()
     filename = data.get('filename')
     content = data.get('content')
 
@@ -183,7 +288,7 @@ def create_file():
     try:
         file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         with open(file_path, 'w') as f:
-            f.write(content)  # Write content to the file
+            f.write(content)
         logging.info(f"File {filename} created successfully.")
         return jsonify({"message": "File created successfully!"}), 201
     except Exception as e:
@@ -195,4 +300,7 @@ def index():
     return render_template('index.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    if os.environ.get('VERCEL'):
+        app.run(debug=False)
+    else:
+        app.run(debug=True, host='0.0.0.0', port=5000)
