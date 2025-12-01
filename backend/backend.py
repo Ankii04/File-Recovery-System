@@ -280,26 +280,6 @@ def download_file(filename):
 def create_file():
     data = request.get_json()
     filename = data.get('filename')
-    content = data.get('content')
-
-    if not filename:
-        return jsonify({"error": "Filename is required"}), 400
-
-    try:
-        file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        with open(file_path, 'w') as f:
-            f.write(content)
-        logging.info(f"File {filename} created successfully.")
-        return jsonify({"message": "File created successfully!"}), 201
-    except Exception as e:
-        logging.error(f"Error creating file: {e}")
-        return jsonify({"error": "Error creating file"}), 500
-
-
-@app.route('/create-file', methods=['POST'])
-def create_file():
-    data = request.get_json()
-    filename = data.get('filename')
     content = data.get('content', '')
 
     if not filename:
