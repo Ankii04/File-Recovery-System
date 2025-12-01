@@ -128,7 +128,7 @@ def list_files():
             ]
     except Exception as e:
         logging.error(f"Error listing files: {e}")
-        return jsonify({"error": "Failed to list files"}), 500
+        return jsonify({"error": f"Failed to list files: {str(e)}"}), 500
 
     if search_query:
         files = [file for file in files if search_query in file['name'].lower()]
@@ -199,7 +199,7 @@ def list_trash():
         ]
     except Exception as e:
         logging.error(f"Error listing trash: {e}")
-        return jsonify({"error": "Failed to list trash"}), 500
+        return jsonify({"error": f"Failed to list trash: {str(e)}"}), 500
     return jsonify(files)
 
 @app.route('/delete-permanent/<filename>', methods=['DELETE'])

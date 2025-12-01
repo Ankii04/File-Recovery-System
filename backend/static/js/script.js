@@ -43,6 +43,7 @@ function toggleFileAction() {
     if (action === "upload") document.getElementById("uploadSection").classList.remove("hidden");
     else if (action === "create") document.getElementById("createSection").classList.remove("hidden");
 }
+
 async function createFile() {
     let filename = document.getElementById("fileNameInput").value.trim();
     let content = document.getElementById("fileContentInput").value;
@@ -69,24 +70,6 @@ async function createFile() {
     }
 }
 
-
-// async function createFile() {
-//     let filename = document.getElementById("fileNameInput").value.trim();
-//     let content = document.getElementById("fileContentInput").value;
-
-//     if (!filename) return alert("Filename is required");
-
-//     let response = await fetch('/create-file', {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify({ filename, content })
-//     });
-
-//     let result = await response.json();
-//     alert(result.message || result.error);
-//     refreshFileList();
-// }
-
 async function downloadFile(filename) {
     try {
         let response = await fetch(`/download/${filename}`);
@@ -103,7 +86,9 @@ async function downloadFile(filename) {
     } catch (error) {
         alert(error.message);
     }
-}async function viewFiles() {
+}
+
+async function viewFiles() {
     try {
         let searchQuery = document.getElementById("searchInput").value;
         let sortBy = document.getElementById("sortOptions").value;
@@ -113,6 +98,19 @@ async function downloadFile(filename) {
 
         let fileListDiv = document.getElementById("fileList").querySelector('ul');
         fileListDiv.innerHTML = "";
+
+        if (!Array.isArray(files)) {
+            console.error("Server returned error:", files);
+            if (files.error) {
+                fileListDiv.innerHTML = `<li style="color: red;">Error: ${files.error}</li>`;
+            }
+            return;
+        }
+
+        if (files.length === 0) {
+            fileListDiv.innerHTML = "<li>No files found.</li>";
+            return;
+        }
 
         files.forEach(file => {
             let fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
@@ -133,43 +131,19 @@ async function downloadFile(filename) {
     }
 }
 
-
-// async function viewFiles() {
-//     try {
-//         let response = await fetch('/list-files');
-//         let files = await response.json();
-
-//         let filesContainer = document.getElementById("filesContainer");
-//         filesContainer.innerHTML = "";
-
-//         files.forEach(file => {
-//             let li = document.createElement("li");
-//             li.innerHTML = `
-//                 ${truncateFileName(file.name)} (${(file.size / (1024 * 1024)).toFixed(2)} MB)
-//                 <button onclick="downloadFile('${file.name}')">Download</button>
-//                 <button onclick="renameFile('${file.name}')">Rename</button>
-//                 <button onclick="deleteFile('${file.name}')">Delete</button>
-//             `;
-//             filesContainer.appendChild(li);
-//         });
-//     } catch (error) {
-//         console.error(error);
-//     }
-// }
-
 async function renameFile(oldFilename) {
     let newFilename = prompt(`Rename "${oldFilename}" to:`);
     if (!newFilename) return;
 
-    let response = await fetch('/rename-file', {
-        method: 'POST',
+    let response = await fetch('/rename', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldFilename, newFilename })
+        body: JSON.stringify({ old_name: oldFilename, new_name: newFilename })
     });
 
     let result = await response.json();
     alert(result.message || result.error);
-    refreshFileList();
+    if (response.ok) refreshFileList();
 }
 
 async function deleteFile(filename) {
@@ -190,7 +164,22 @@ async function viewTrash() {
         let response = await fetch('/trash');
         let files = await response.json();
 
-        document.getElementById('trashList').querySelector('ul').innerHTML = files.map(file => `
+        let trashListUl = document.getElementById('trashList').querySelector('ul');
+
+        if (!Array.isArray(files)) {
+            console.error("Server returned error:", files);
+            if (files.error) {
+                trashListUl.innerHTML = `<li style="color: red;">Error: ${files.error}</li>`;
+            }
+            return;
+        }
+
+        if (files.length === 0) {
+            trashListUl.innerHTML = "<li>Trash is empty.</li>";
+            return;
+        }
+
+        trashListUl.innerHTML = files.map(file => `
             <li>
                 ${truncateFileName(file.name)} (${(file.size / (1024 * 1024)).toFixed(2)} MB) 
                 <button class="restore-btn" onclick="restoreFile('${file.name}')">Restore</button>
@@ -233,26 +222,4 @@ function toggleTrashView(visible) {
 function refreshFileList() {
     viewFiles();
     viewTrash();
-}
-
-function loadFiles() {
-    fetch('/list-files')
-    .then(response => response.json())
-    .then(files => {
-        let fileList = document.getElementById("file-list");
-        fileList.innerHTML = "";  
-
-        files.forEach(file => {
-            let listItem = document.createElement("li");
-            listItem.textContent = file;
-
-            let deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "Delete";
-            deleteBtn.onclick = () => deleteFile(file);
-
-            listItem.appendChild(deleteBtn);
-            fileList.appendChild(listItem);
-        });
-    })
-    .catch(error => console.error("Error loading files:", error));
 }
