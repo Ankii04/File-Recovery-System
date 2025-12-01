@@ -22,20 +22,22 @@ try:
             import json
             cred_json = json.loads(os.environ['FIREBASE_CREDENTIALS'])
             cred = credentials.Certificate(cred_json)
+            bucket_name = os.environ.get('FIREBASE_STORAGE_BUCKET', 'file-recovery-system-5d7e9.appspot.com')
             firebase_admin.initialize_app(cred, {
-                'storageBucket': 'file-recovery-system-5d7e9.appspot.com'
+                'storageBucket': bucket_name
             })
             USE_FIREBASE = True
-            logging.info("Firebase initialized successfully from environment variable")
+            logging.info(f"Firebase initialized successfully from environment variable with bucket: {bucket_name}")
         
         # Fall back to local file (local development)
         elif os.path.exists('serviceAccountKey.json'):
             cred = credentials.Certificate('serviceAccountKey.json')
+            bucket_name = os.environ.get('FIREBASE_STORAGE_BUCKET', 'file-recovery-system-5d7e9.appspot.com')
             firebase_admin.initialize_app(cred, {
-                'storageBucket': 'file-recovery-system-5d7e9.appspot.com'
+                'storageBucket': bucket_name
             })
             USE_FIREBASE = True
-            logging.info("Firebase initialized successfully from local file")
+            logging.info(f"Firebase initialized successfully from local file with bucket: {bucket_name}")
         else:
             logging.warning("Firebase credentials not found, using local storage")
     else:
