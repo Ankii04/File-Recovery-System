@@ -1,32 +1,54 @@
 /* General Styles */
-body {
-    font-family: 'Arial', sans-serif;
+* {
     margin: 0;
     padding: 0;
-    background-color: #f4f6f9;
-    text-align: center;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
 }
 
 /* Centered Container */
 .container, .error-container {
-    width: 90%;
-    max-width: 800px;
-    margin: 20px auto;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
     background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
 }
 
 /* Title Styling */
 h1 {
-    color: #333;
+    color: #667eea;
     margin-bottom: 10px;
+    font-size: 2.5em;
+    font-weight: 700;
+}
+
+h2 {
+    color: #333;
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-size: 1.5em;
+}
+
+h3 {
+    color: #555;
+    margin-top: 20px;
+    margin-bottom: 15px;
 }
 
 p {
     color: #666;
-    font-size: 14px;
+    font-size: 15px;
+    margin-bottom: 10px;
 }
 
 /* Error Page Enhancements */
@@ -58,50 +80,75 @@ p {
 
 /* Action Selector */
 .action-selector {
-    margin: 15px 0;
+    margin: 25px 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.action-selector label {
+    font-weight: 600;
+    color: #333;
+    margin-right: 15px;
 }
 
 #fileAction {
-    padding: 10px;
+    padding: 12px 20px;
     font-size: 16px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
+    border-radius: 8px;
+    border: 2px solid #667eea;
     cursor: pointer;
-    transition: 0.3s;
+    transition: all 0.3s ease;
+    background: white;
+    color: #667eea;
+    font-weight: 600;
 }
 
 #fileAction:hover {
-    background-color: #e9ecef;
+    background-color: #667eea;
+    color: white;
 }
 
 /* Upload Section */
 .file-actions {
-    margin: 15px 0;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #f9f9f9;
+    margin: 20px 0;
+    padding: 25px;
+    border: 2px dashed #667eea;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f5f7ff 0%, #f0f4ff 100%);
+    transition: all 0.3s ease;
+}
+
+.file-actions:hover {
+    border-color: #764ba2;
+    background: linear-gradient(135deg, #ede9ff 0%, #e8e0ff 100%);
 }
 
 /* File Label Styling */
 .file-label {
     display: inline-block;
-    padding: 10px 15px;
-    background-color: #007bff;
+    padding: 12px 25px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
-    margin-right: 10px;
+    margin-right: 15px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .file-label:hover {
-    background-color: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
 }
 
 /* Selected File Name */
 #selectedFileName {
-    font-weight: bold;
-    color: #007bff;
+    font-weight: 600;
+    color: #667eea;
+    display: inline-block;
+    margin-left: 10px;
 }
 
 /* Hidden File Input */
@@ -112,73 +159,120 @@ p {
 /* Create File Section */
 .create-file {
     margin: 20px auto;
-    padding: 15px;
-    border-radius: 8px;
-    background: #ffffff;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    padding: 25px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f5f7ff 0%, #f0f4ff 100%);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
 }
 
 /* Input Group */
 .input-group {
-    margin: 10px 0;
+    margin: 15px 0;
+    text-align: left;
 }
 
-#createFileName,
+#fileNameInput,
 #fileContentInput {
     width: 100%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
     font-size: 14px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+}
+
+#fileNameInput:focus,
+#fileContentInput:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 #fileContentInput {
-    height: 120px;
-    resize: none;
+    height: 150px;
+    resize: vertical;
 }
 
 /* Buttons */
 button {
-    padding: 10px 15px;
-    background-color: #007bff;
+    padding: 12px 25px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
-    transition: 0.3s ease;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 15px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    margin: 10px 5px;
 }
 
 button:hover {
-    background-color: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+button:active {
+    transform: translateY(0);
 }
 
 /* Search & Sorting */
 .search-filter {
-    margin: 20px auto;
+    margin: 25px auto;
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 12px;
 }
 
 #searchInput {
-    padding: 10px;
+    padding: 12px 15px;
     width: 250px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
     font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+#searchInput:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 #sortOptions {
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
     font-size: 14px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+#sortOptions:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 /* File List */
 #fileList {
-    margin-top: 20px;
+    margin-top: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+#fileList h3 {
+    text-align: left;
+    color: #667eea;
+    margin-bottom: 20px;
 }
 
 ul {
@@ -187,16 +281,22 @@ ul {
 }
 
 li {
-    padding: 10px;
-    background: white;
-    margin: 5px auto;
-    width: 90%;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    background: linear-gradient(135deg, #f5f7ff 0%, #f0f4ff 100%);
+    margin: 10px 0;
+    border-radius: 10px;
+    border-left: 4px solid #667eea;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+li:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
 /* Hide Elements */
@@ -204,36 +304,45 @@ li {
     display: none;
 }
 
-#trashList, #fileList {
-    margin-top: 20px;
-    padding: 10px;
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    border-radius: 5px;
+#trashList {
+    margin-top: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #ffe5e5 0%, #fff0f0 100%);
+    border: 2px solid #ff6b6b;
+    border-radius: 12px;
 }
 
-#trashList ul, #fileList ul {
+#trashList h3 {
+    color: #ff6b6b;
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+#trashList ul {
     list-style-type: none;
     padding: 0;
 }
 
-#trashList li, #fileList li {
-    padding: 8px;
-    border-bottom: 1px solid #f5c6cb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+#trashList li {
+    padding: 15px;
+    background: white;
+    border-left: 4px solid #ff6b6b;
+    margin: 10px 0;
+    border-radius: 10px;
 }
 
-button {
+li button {
     margin-left: 10px;
-    padding: 5px 10px;
-    border: none;
-    cursor: pointer;
+    padding: 8px 15px;
+    font-size: 13px;
 }
 
-button:hover {
-    background-color: #ccc;
+.restore-btn {
+    background: linear-gradient(135deg, #51cf66 0%, #40c057 100%) !important;
+}
+
+.delete-permanent-btn {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%) !important;
 }
 .modal {
     display: none;
