@@ -15,28 +15,33 @@ logging.basicConfig(level=logging.DEBUG)
 
 USE_FIREBASE = False
 try:
-    # Check environment variable first (Vercel deployment)
-    if os.environ.get('FIREBASE_CREDENTIALS'):
-        import json
-        cred_json = json.loads(os.environ['FIREBASE_CREDENTIALS'])
-        cred = credentials.Certificate(cred_json)
-        firebase_admin.initialize_app(cred, {
-            'storageBucket': 'file-recovery-system-5d7e9.appspot.com'
-        })
-        USE_FIREBASE = True
-        logging.info("Firebase initialized successfully from environment variable")
-    
-    # Fall back to local file (local development)
-    elif os.path.exists('serviceAccountKey.json'):
-        cred = credentials.Certificate('serviceAccountKey.json')
-        firebase_admin.initialize_app(cred, {
-            'storageBucket': 'file-recovery-system-5d7e9.appspot.com'
-        })
-        USE_FIREBASE = True
-        logging.info("Firebase initialized successfully from local file")
-
+    # Check if Firebase is already initialized to prevent 500 errors on re-import
+    if not firebase_admin._apps:
+        # Check environment variable first (Vercel deployment)
+        if os.environ.get('FIREBASE_CREDENTIALS'):
+            import json
+            cred_json = json.loads(os.environ['FIREBASE_CREDENTIALS'])
+            cred = credentials.Certificate(cred_json)
+            firebase_admin.initialize_app(cred, {
+                'storageBucket': 'file-recovery-system-5d7e9.appspot.com'
+            })
+            USE_FIREBASE = True
+            logging.info("Firebase initialized successfully from environment variable")
+        
+        # Fall back to local file (local development)
+        elif os.path.exists('serviceAccountKey.json'):
+            cred = credentials.Certificate('serviceAccountKey.json')
+            firebase_admin.initialize_app(cred, {
+                'storageBucket': 'file-recovery-system-5d7e9.appspot.com'
+            })
+            USE_FIREBASE = True
+            logging.info("Firebase initialized successfully from local file")
+        else:
+            logging.warning("Firebase credentials not found, using local storage")
     else:
-        logging.warning("Firebase credentials not found, using local storage")
+        # Already initialized
+        USE_FIREBASE = True
+        logging.info("Firebase already initialized, skipping re-initialization")
 
 except Exception as e:
     logging.warning(f"Firebase initialization failed: {e}, using local storage")
