@@ -70,8 +70,6 @@ if not USE_FIREBASE:
         else:
             logging.error(f"Could not create local directories: {e}")
 
-
-
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -94,7 +92,7 @@ def upload_file():
             logging.info(f"File {file.filename} uploaded locally successfully.")
     except Exception as e:
         logging.error(f"Error saving file: {e}")
-        return jsonify({"error": "Failed to upload file"}), 500
+        return jsonify({"error": f"Failed to upload file: {str(e)}"}), 500
     
     return jsonify({"message": f"{file.filename} uploaded successfully"}), 201
 
@@ -169,34 +167,58 @@ def delete_file(filename):
             return jsonify({"error": "File not found"}), 404
     except Exception as e:
         logging.error(f"Error moving file to trash: {e}")
-        return jsonify({"error": "Failed to move file to trash"}), 500
+        return jsonify({"error": f"Failed to move file to trash: {str(e)}"}), 500
 
 @app.route('/restore/<filename>', methods=['PUT'])
 def restore_file(filename):
-    src_path = os.path.join(TRASH_FOLDER, filename)
-    dest_path = os.path.join(UPLOAD_FOLDER, filename)
+    try:
+        if USE_FIREBASE:
+            bucket = storage.bucket()
+            src_blob = bucket.blob(f"trash/{filename}")
+            if src_blob.exists():
+                dest_blob = bucket.blob(f"uploads/{filename}")
+                bucket.copy_blob(src_blob, bucket, f"uploads/{filename}")
+                src_blob.delete()
+                logging.info(f"File {filename} restored.")
+                return jsonify({"message": f"{filename} restored successfully.", "status": "restored"}), 200
+            else:
+                return jsonify({"error": "File not found in trash"}), 404
+        else:
+            src_path = os.path.join(TRASH_FOLDER, filename)
+            dest_path = os.path.join(UPLOAD_FOLDER, filename)
 
-    if os.path.exists(src_path):
-        try:
-            shutil.move(src_path, dest_path)
-            logging.info(f"File {filename} restored.")
-        except Exception as e:
-            logging.error(f"Error restoring file: {e}")
-            return jsonify({"error": "Failed to restore file"}), 500
-        return jsonify({"message": f"{filename} restored successfully.", "status": "restored"}), 200
-    return jsonify({"error": "File not found in trash"}), 404
+            if os.path.exists(src_path):
+                shutil.move(src_path, dest_path)
+                logging.info(f"File {filename} restored.")
+                return jsonify({"message": f"{filename} restored successfully.", "status": "restored"}), 200
+            return jsonify({"error": "File not found in trash"}), 404
+    except Exception as e:
+        logging.error(f"Error restoring file: {e}")
+        return jsonify({"error": f"Failed to restore file: {str(e)}"}), 500
 
 @app.route('/trash', methods=['GET'])
 def list_trash():
     try:
-        files = [
-            {
-                "name": filename,
-                "size": os.path.getsize(os.path.join(TRASH_FOLDER, filename)),
-                "date_deleted": datetime.fromtimestamp(os.path.getmtime(os.path.join(TRASH_FOLDER, filename))).strftime('%Y-%m-%d %H:%M:%S')
-            }
-            for filename in os.listdir(TRASH_FOLDER) if os.path.isfile(os.path.join(TRASH_FOLDER, filename))
-        ]
+        if USE_FIREBASE:
+            bucket = storage.bucket()
+            blobs = bucket.list_blobs(prefix='trash/')
+            files = [
+                {
+                    "name": blob.name.replace('trash/', ''),
+                    "size": blob.size,
+                    "date_deleted": blob.updated.strftime('%Y-%m-%d %H:%M:%S') if blob.updated else "Unknown"
+                }
+                for blob in blobs if blob.name != 'trash/'
+            ]
+        else:
+            files = [
+                {
+                    "name": filename,
+                    "size": os.path.getsize(os.path.join(TRASH_FOLDER, filename)),
+                    "date_deleted": datetime.fromtimestamp(os.path.getmtime(os.path.join(TRASH_FOLDER, filename))).strftime('%Y-%m-%d %H:%M:%S')
+                }
+                for filename in os.listdir(TRASH_FOLDER) if os.path.isfile(os.path.join(TRASH_FOLDER, filename))
+            ]
     except Exception as e:
         logging.error(f"Error listing trash: {e}")
         return jsonify({"error": f"Failed to list trash: {str(e)}"}), 500
@@ -204,17 +226,26 @@ def list_trash():
 
 @app.route('/delete-permanent/<filename>', methods=['DELETE'])
 def permanently_delete_file(filename):
-    file_path = os.path.join(TRASH_FOLDER, filename)
-
-    if os.path.exists(file_path):
-        try:
-            os.remove(file_path)
-            logging.info(f"File {filename} permanently deleted.")
-        except Exception as e:
-            logging.error(f"Error permanently deleting file: {e}")
-            return jsonify({"error": "Failed to permanently delete file"}), 500
-        return jsonify({"message": f"{filename} permanently deleted."}), 200
-    return jsonify({"error": "File not found in trash"}), 404
+    try:
+        if USE_FIREBASE:
+            bucket = storage.bucket()
+            blob = bucket.blob(f"trash/{filename}")
+            if blob.exists():
+                blob.delete()
+                logging.info(f"File {filename} permanently deleted.")
+                return jsonify({"message": f"{filename} permanently deleted."}), 200
+            else:
+                return jsonify({"error": "File not found in trash"}), 404
+        else:
+            file_path = os.path.join(TRASH_FOLDER, filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                logging.info(f"File {filename} permanently deleted.")
+                return jsonify({"message": f"{filename} permanently deleted."}), 200
+            return jsonify({"error": "File not found in trash"}), 404
+    except Exception as e:
+        logging.error(f"Error permanently deleting file: {e}")
+        return jsonify({"error": f"Failed to permanently delete file: {str(e)}"}), 500
 
 @app.route('/rename', methods=['PUT'])
 def rename_file():
@@ -253,7 +284,7 @@ def rename_file():
             logging.info(f"File renamed from {old_name} to {new_name}.")
     except Exception as e:
         logging.error(f"Error renaming file: {e}")
-        return jsonify({"error": "Failed to rename file"}), 500
+        return jsonify({"error": f"Failed to rename file: {str(e)}"}), 500
 
     return jsonify({"message": f"File renamed from {old_name} to {new_name}"}), 200
 
@@ -279,7 +310,7 @@ def download_file(filename):
             return jsonify({"error": "File not found"}), 404
     except Exception as e:
         logging.error(f"Error downloading file: {e}")
-        return jsonify({"error": "Failed to download file"}), 500
+        return jsonify({"error": f"Failed to download file: {str(e)}"}), 500
 
 @app.route('/create-file', methods=['POST'])
 def create_file():
