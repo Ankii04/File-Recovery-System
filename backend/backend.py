@@ -275,31 +275,6 @@ def download_file(filename):
     except Exception as e:
         logging.error(f"Error downloading file: {e}")
         return jsonify({"error": "Failed to download file"}), 500
-
-@app.route('/create-file', methods=['POST'])
-def create_file():
-    data = request.get_json()
-    filename = data.get('filename')
-    content = data.get('content')
-
-    if not filename:
-        return jsonify({"error": "Filename is required"}), 400
-
-    try:
-        file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        with open(file_path, 'w') as f:
-            f.write(content)
-        logging.info(f"File {filename} created successfully.")
-        return jsonify({"message": "File created successfully!"}), 201
-    except Exception as e:
-        logging.error(f"Error creating file: {e}")
-        return jsonify({"error": "Error creating file"}), 500
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-if __name__ == '__main__':
     if os.environ.get('VERCEL'):
         app.run(debug=False)
     else:
