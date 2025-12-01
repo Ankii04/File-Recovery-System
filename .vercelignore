@@ -1,0 +1,24 @@
+# Virtual environments
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Local storage
+backend/uploads/
+backend/trash/
+uploads/
+trash/
+
+# Environment files
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
